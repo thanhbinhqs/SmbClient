@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36616.10 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmbClient", "SmbClient\SmbClient.csproj", "{F80692C0-8A7B-4DD7-AD25-6EA391C0316F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F80692C0-8A7B-4DD7-AD25-6EA391C0316F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F80692C0-8A7B-4DD7-AD25-6EA391C0316F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F80692C0-8A7B-4DD7-AD25-6EA391C0316F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F80692C0-8A7B-4DD7-AD25-6EA391C0316F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {785C6EF8-EC07-4A64-825E-DBF75BD7787C}
+	EndGlobalSection
+EndGlobal
