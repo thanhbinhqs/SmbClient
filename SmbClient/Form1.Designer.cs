@@ -1,4 +1,4 @@
-﻿namespace SmbClient
+namespace SmbClient
 {
   partial class Form1
     {
@@ -71,12 +71,25 @@
             this.lblStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFileCount = new System.Windows.Forms.ToolStripStatusLabel();
             this.progressBar = new System.Windows.Forms.ToolStripProgressBar();
+            this.splitContainerMain = new System.Windows.Forms.SplitContainer();
+            this.panelSmbTop = new System.Windows.Forms.Panel();
+            this.treeViewLocal = new System.Windows.Forms.TreeView();
+            this.panelLocalTop = new System.Windows.Forms.Panel();
+            this.lblLocalPath = new System.Windows.Forms.Label();
+            this.txtLocalPath = new System.Windows.Forms.TextBox();
+            this.btnLocalBrowse = new System.Windows.Forms.Button();
             this.groupBoxConnection.SuspendLayout();
             this.groupBoxFilter.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numMaxSize)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numMinSize)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numMaxDepth)).BeginInit();
             this.statusStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).BeginInit();
+            this.splitContainerMain.Panel1.SuspendLayout();
+            this.splitContainerMain.Panel2.SuspendLayout();
+            this.splitContainerMain.SuspendLayout();
+            this.panelSmbTop.SuspendLayout();
+            this.panelLocalTop.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupBoxConnection
@@ -132,6 +145,7 @@
             this.txtDomain.Name = "txtDomain";
             this.txtDomain.Size = new System.Drawing.Size(270, 26);
             this.txtDomain.TabIndex = 4;
+            this.txtDomain.Text = ".";
             // 
             // txtPassword
             // 
@@ -141,6 +155,7 @@
             this.txtPassword.PasswordChar = '*';
             this.txtPassword.Size = new System.Drawing.Size(270, 26);
             this.txtPassword.TabIndex = 3;
+            this.txtPassword.Text = "1234567890";
             // 
             // txtUsername
             // 
@@ -149,6 +164,7 @@
             this.txtUsername.Name = "txtUsername";
             this.txtUsername.Size = new System.Drawing.Size(270, 26);
             this.txtUsername.TabIndex = 2;
+            this.txtUsername.Text = "share";
             // 
             // txtShareName
             // 
@@ -157,6 +173,7 @@
             this.txtShareName.Name = "txtShareName";
             this.txtShareName.Size = new System.Drawing.Size(270, 26);
             this.txtShareName.TabIndex = 1;
+            this.txtShareName.Text = "media";
             // 
             // txtServer
             // 
@@ -165,6 +182,7 @@
             this.txtServer.Name = "txtServer";
             this.txtServer.Size = new System.Drawing.Size(270, 26);
             this.txtServer.TabIndex = 0;
+            this.txtServer.Text = "192.168.1.250";
             // 
             // lblDomain
             // 
@@ -444,16 +462,17 @@
             // txtPath
             // 
             this.txtPath.Enabled = false;
-            this.txtPath.Location = new System.Drawing.Point(87, 306);
+            this.txtPath.Location = new System.Drawing.Point(54, 9);
             this.txtPath.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtPath.Name = "txtPath";
-            this.txtPath.Size = new System.Drawing.Size(224, 26);
+            this.txtPath.Size = new System.Drawing.Size(350, 26);
             this.txtPath.TabIndex = 3;
+            this.txtPath.Text = "/";
             // 
             // lblPath
             // 
             this.lblPath.AutoSize = true;
-            this.lblPath.Location = new System.Drawing.Point(30, 310);
+            this.lblPath.Location = new System.Drawing.Point(8, 12);
             this.lblPath.Name = "lblPath";
             this.lblPath.Size = new System.Drawing.Size(46, 20);
             this.lblPath.TabIndex = 2;
@@ -462,7 +481,7 @@
             // btnBrowse
             // 
             this.btnBrowse.Enabled = false;
-            this.btnBrowse.Location = new System.Drawing.Point(321, 304);
+            this.btnBrowse.Location = new System.Drawing.Point(410, 6);
             this.btnBrowse.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnBrowse.Name = "btnBrowse";
             this.btnBrowse.Size = new System.Drawing.Size(87, 32);
@@ -473,16 +492,14 @@
             // 
             // treeViewFiles
             // 
-            this.treeViewFiles.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.treeViewFiles.Dock = System.Windows.Forms.DockStyle.Fill;
             this.treeViewFiles.ImageIndex = 0;
             this.treeViewFiles.ImageList = this.imageList;
-            this.treeViewFiles.Location = new System.Drawing.Point(14, 425);
+            this.treeViewFiles.Location = new System.Drawing.Point(0, 45);
             this.treeViewFiles.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.treeViewFiles.Name = "treeViewFiles";
             this.treeViewFiles.SelectedImageIndex = 0;
-            this.treeViewFiles.Size = new System.Drawing.Size(872, 336);
+            this.treeViewFiles.Size = new System.Drawing.Size(600, 435);
             this.treeViewFiles.TabIndex = 5;
             // 
             // imageList
@@ -498,10 +515,10 @@
             this.lblStatus,
             this.lblFileCount,
             this.progressBar});
-            this.statusStrip.Location = new System.Drawing.Point(0, 770);
+            this.statusStrip.Location = new System.Drawing.Point(0, 898);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 16, 0);
-            this.statusStrip.Size = new System.Drawing.Size(900, 32);
+            this.statusStrip.Size = new System.Drawing.Size(1230, 32);
             this.statusStrip.TabIndex = 6;
             this.statusStrip.Text = "statusStrip1";
             // 
@@ -514,7 +531,7 @@
             // lblFileCount
             // 
             this.lblFileCount.Name = "lblFileCount";
-            this.lblFileCount.Size = new System.Drawing.Size(764, 25);
+            this.lblFileCount.Size = new System.Drawing.Size(1094, 25);
             this.lblFileCount.Spring = true;
             this.lblFileCount.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
@@ -525,16 +542,93 @@
             this.progressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
             this.progressBar.Visible = false;
             // 
+            // splitContainerMain
+            // 
+            this.splitContainerMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.splitContainerMain.Location = new System.Drawing.Point(14, 425);
+            this.splitContainerMain.Name = "splitContainerMain";
+            // 
+            // splitContainerMain.Panel1
+            // 
+            this.splitContainerMain.Panel1.Controls.Add(this.treeViewFiles);
+            this.splitContainerMain.Panel1.Controls.Add(this.panelSmbTop);
+            // 
+            // splitContainerMain.Panel2
+            // 
+            this.splitContainerMain.Panel2.Controls.Add(this.treeViewLocal);
+            this.splitContainerMain.Panel2.Controls.Add(this.panelLocalTop);
+            this.splitContainerMain.Size = new System.Drawing.Size(1200, 480);
+            this.splitContainerMain.SplitterDistance = 600;
+            this.splitContainerMain.TabIndex = 6;
+            // 
+            // panelSmbTop
+            // 
+            this.panelSmbTop.Controls.Add(this.lblPath);
+            this.panelSmbTop.Controls.Add(this.txtPath);
+            this.panelSmbTop.Controls.Add(this.btnBrowse);
+            this.panelSmbTop.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelSmbTop.Location = new System.Drawing.Point(0, 0);
+            this.panelSmbTop.Name = "panelSmbTop";
+            this.panelSmbTop.Size = new System.Drawing.Size(600, 45);
+            this.panelSmbTop.TabIndex = 10;
+            // 
+            // treeViewLocal
+            // 
+            this.treeViewLocal.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.treeViewLocal.ImageIndex = 0;
+            this.treeViewLocal.ImageList = this.imageList;
+            this.treeViewLocal.Location = new System.Drawing.Point(0, 45);
+            this.treeViewLocal.Name = "treeViewLocal";
+            this.treeViewLocal.SelectedImageIndex = 0;
+            this.treeViewLocal.Size = new System.Drawing.Size(596, 435);
+            this.treeViewLocal.TabIndex = 6;
+            // 
+            // panelLocalTop
+            // 
+            this.panelLocalTop.Controls.Add(this.lblLocalPath);
+            this.panelLocalTop.Controls.Add(this.txtLocalPath);
+            this.panelLocalTop.Controls.Add(this.btnLocalBrowse);
+            this.panelLocalTop.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelLocalTop.Location = new System.Drawing.Point(0, 0);
+            this.panelLocalTop.Name = "panelLocalTop";
+            this.panelLocalTop.Size = new System.Drawing.Size(596, 45);
+            this.panelLocalTop.TabIndex = 11;
+            // 
+            // lblLocalPath
+            // 
+            this.lblLocalPath.AutoSize = true;
+            this.lblLocalPath.Location = new System.Drawing.Point(8, 12);
+            this.lblLocalPath.Name = "lblLocalPath";
+            this.lblLocalPath.Size = new System.Drawing.Size(51, 20);
+            this.lblLocalPath.TabIndex = 2;
+            this.lblLocalPath.Text = "Local:";
+            // 
+            // txtLocalPath
+            // 
+            this.txtLocalPath.Location = new System.Drawing.Point(60, 9);
+            this.txtLocalPath.Name = "txtLocalPath";
+            this.txtLocalPath.Size = new System.Drawing.Size(350, 26);
+            this.txtLocalPath.TabIndex = 3;
+            // 
+            // btnLocalBrowse
+            // 
+            this.btnLocalBrowse.Location = new System.Drawing.Point(416, 6);
+            this.btnLocalBrowse.Name = "btnLocalBrowse";
+            this.btnLocalBrowse.Size = new System.Drawing.Size(87, 32);
+            this.btnLocalBrowse.TabIndex = 4;
+            this.btnLocalBrowse.Text = "Go";
+            this.btnLocalBrowse.UseVisualStyleBackColor = true;
+            this.btnLocalBrowse.Click += new System.EventHandler(this.btnLocalBrowse_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(900, 802);
+            this.ClientSize = new System.Drawing.Size(1230, 930);
             this.Controls.Add(this.statusStrip);
-            this.Controls.Add(this.treeViewFiles);
-            this.Controls.Add(this.btnBrowse);
-            this.Controls.Add(this.lblPath);
-            this.Controls.Add(this.txtPath);
+            this.Controls.Add(this.splitContainerMain);
             this.Controls.Add(this.groupBoxFilter);
             this.Controls.Add(this.groupBoxConnection);
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
@@ -549,6 +643,14 @@
             ((System.ComponentModel.ISupportInitialize)(this.numMaxDepth)).EndInit();
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
+            this.splitContainerMain.Panel1.ResumeLayout(false);
+            this.splitContainerMain.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).EndInit();
+            this.splitContainerMain.ResumeLayout(false);
+            this.panelSmbTop.ResumeLayout(false);
+            this.panelSmbTop.PerformLayout();
+            this.panelLocalTop.ResumeLayout(false);
+            this.panelLocalTop.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -596,8 +698,15 @@ private System.Windows.Forms.DateTimePicker dateModifiedAfter;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel lblStatus;
         private System.Windows.Forms.ToolStripStatusLabel lblFileCount;
-    private System.Windows.Forms.ToolStripProgressBar progressBar;
+        private System.Windows.Forms.ToolStripProgressBar progressBar;
         private System.Windows.Forms.Button btnClearFilter;
+        private System.Windows.Forms.SplitContainer splitContainerMain;
+        private System.Windows.Forms.Panel panelLocalTop;
+        private System.Windows.Forms.TextBox txtLocalPath;
+        private System.Windows.Forms.Button btnLocalBrowse;
+        private System.Windows.Forms.Label lblLocalPath;
+        private System.Windows.Forms.TreeView treeViewLocal;
+        private System.Windows.Forms.Panel panelSmbTop;
     }
 }
 

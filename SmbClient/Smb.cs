@@ -270,34 +270,49 @@ namespace SmbClient
 
                 List<QueryDirectoryFileInformation> fileList;
                 status = _fileStore.QueryDirectory(out fileList, handle, "*", FileInformationClass.FileDirectoryInformation);
-                LastNTStatus = status;
 
-                _fileStore.CloseFile(handle);
-
-                if (status == NTStatus.STATUS_SUCCESS)
+                while (status == NTStatus.STATUS_SUCCESS || status == NTStatus.STATUS_NO_MORE_FILES)
                 {
-                    foreach (var fileInfo in fileList)
+                    if (fileList != null)
                     {
-                        var dirInfo = (FileDirectoryInformation)fileInfo;
-                        if (dirInfo.FileName != "." && dirInfo.FileName != "..")
+                        foreach (var fileInfo in fileList)
                         {
-                            result.Add(new SmbFileInfo
+                            var dirInfo = (FileDirectoryInformation)fileInfo;
+                            if (dirInfo.FileName != "." && dirInfo.FileName != "..")
                             {
-                                Name = dirInfo.FileName,
-                                IsDirectory = (dirInfo.FileAttributes & SMBLibrary.FileAttributes.Directory) != 0,
-                                Size = dirInfo.EndOfFile,
-                                CreationTime = dirInfo.CreationTime,
-                                LastWriteTime = dirInfo.LastWriteTime,
-                                LastAccessTime = dirInfo.LastAccessTime
-                            });
+                                result.Add(new SmbFileInfo
+                                {
+                                    Name = dirInfo.FileName,
+                                    IsDirectory = (dirInfo.FileAttributes & SMBLibrary.FileAttributes.Directory) != 0,
+                                    Size = dirInfo.EndOfFile,
+                                    CreationTime = dirInfo.CreationTime,
+                                    LastWriteTime = dirInfo.LastWriteTime,
+                                    LastAccessTime = dirInfo.LastAccessTime
+                                });
+                            }
                         }
                     }
+
+                    if (status == NTStatus.STATUS_NO_MORE_FILES)
+                    {
+                        break;
+                    }
+
+                    // Must pass empty pattern for subsequent queries
+                    status = _fileStore.QueryDirectory(out fileList, handle, string.Empty, FileInformationClass.FileDirectoryInformation);
                 }
-                else
+
+                if (status == NTStatus.STATUS_NO_MORE_FILES || status == NTStatus.STATUS_NO_SUCH_FILE)
+                {
+                    status = NTStatus.STATUS_SUCCESS;
+                }
+                else if (status != NTStatus.STATUS_SUCCESS)
                 {
                     LastError = $"Failed to query directory '{path}': {status}";
                 }
 
+                LastNTStatus = status;
+                _fileStore.CloseFile(handle);
                 return result;
             }
             catch (Exception ex)
@@ -649,6 +664,64 @@ namespace SmbClient
         }
 
         /// <summary>
+        /// Downloads a file from the server to the local machine with progress tracking.
+        /// </summary>
+        public void DownloadFile(string remotePath, string localPath, IProgress<long> progress = null)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to SMB server");
+
+            object handle;
+            FileStatus fileStatus;
+            NTStatus status = _fileStore.CreateFile(out handle, out fileStatus, remotePath,
+                AccessMask.GENERIC_READ | AccessMask.SYNCHRONIZE, SMBLibrary.FileAttributes.Normal,
+                ShareAccess.Read, CreateDisposition.FILE_OPEN, CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_ALERT, null);
+
+            if (status != NTStatus.STATUS_SUCCESS)
+                throw new IOException($"Failed to open remote file '{remotePath}': {status}");
+
+            try
+            {
+                using (var localStream = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    long bytesRead = 0;
+                    while (true)
+                    {
+                        byte[] data;
+                        status = _fileStore.ReadFile(out data, handle, bytesRead, (int)_client.MaxReadSize);
+
+                        if (status != NTStatus.STATUS_SUCCESS && status != NTStatus.STATUS_END_OF_FILE)
+                        {
+                            throw new IOException($"Failed to read remote file: {status}");
+                        }
+
+                        if (data != null && data.Length > 0)
+                        {
+                            localStream.Write(data, 0, data.Length);
+                            bytesRead += data.Length;
+                            progress?.Report(bytesRead);
+                        }
+
+                        if (status == NTStatus.STATUS_END_OF_FILE || data.Length == 0)
+                            break;
+                    }
+                }
+            }
+            finally
+            {
+                _fileStore.CloseFile(handle);
+            }
+        }
+
+        /// <summary>
+        /// Downloads a file asynchronously with progress tracking.
+        /// </summary>
+        public async Task DownloadFileAsync(string remotePath, string localPath, IProgress<long> progress = null)
+        {
+            await Task.Run(() => DownloadFile(remotePath, localPath, progress));
+        }
+
+        /// <summary>
         /// Writes data to a file, creating or overwriting the file.
         /// </summary>
         /// <param name="path">Path to the file (e.g., "Documents/report.pdf")</param>
@@ -738,6 +811,69 @@ namespace SmbClient
         }
 
         /// <summary>
+        /// Uploads a file from the local machine to the server with progress tracking.
+        /// </summary>
+        public void UploadFile(string localPath, string remotePath, IProgress<long> progress = null)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to SMB server");
+
+            if (!File.Exists(localPath))
+                throw new FileNotFoundException($"Local file '{localPath}' not found.");
+
+            var fileInfo = new System.IO.FileInfo(localPath);
+            long totalBytes = fileInfo.Length;
+
+            object handle;
+            FileStatus fileStatus;
+            NTStatus status = _fileStore.CreateFile(out handle, out fileStatus, remotePath,
+                AccessMask.GENERIC_WRITE | AccessMask.SYNCHRONIZE, SMBLibrary.FileAttributes.Normal,
+                ShareAccess.None, CreateDisposition.FILE_OVERWRITE_IF, CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_ALERT, null);
+
+            if (status != NTStatus.STATUS_SUCCESS)
+                throw new IOException($"Failed to create or overwrite remote file '{remotePath}': {status}");
+
+            try
+            {
+                int writeSize = (int)_client.MaxWriteSize;
+                long bytesWritten = 0;
+
+                using (var localStream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    byte[] buffer = new byte[writeSize];
+                    int bytesRead;
+
+                    while ((bytesRead = localStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        byte[] chunk = bytesRead == buffer.Length ? buffer : buffer.Take(bytesRead).ToArray();
+                        int numberOfBytesWritten;
+                        
+                        status = _fileStore.WriteFile(out numberOfBytesWritten, handle, bytesWritten, chunk);
+                        if (status != NTStatus.STATUS_SUCCESS)
+                        {
+                            throw new IOException($"Failed to write to remote file: {status}");
+                        }
+                        
+                        bytesWritten += numberOfBytesWritten;
+                        progress?.Report(bytesWritten);
+                    }
+                }
+            }
+            finally
+            {
+                _fileStore.CloseFile(handle);
+            }
+        }
+
+        /// <summary>
+        /// Uploads a file asynchronously with progress tracking.
+        /// </summary>
+        public async Task UploadFileAsync(string localPath, string remotePath, IProgress<long> progress = null)
+        {
+            await Task.Run(() => UploadFile(localPath, remotePath, progress));
+        }
+
+        /// <summary>
         /// Copies a file from source to destination path.
         /// </summary>
         /// <param name="sourcePath">Source file path</param>
@@ -754,20 +890,77 @@ namespace SmbClient
  /// smb.CopyFile("data.db", $"backups/data_{timestamp}.db");
       /// </code>
   /// </example>
-        public bool CopyFile(string sourcePath, string destinationPath)
+        public bool CopyFile(string sourcePath, string destinationPath, IProgress<long> progress = null)
         {
             if (!_isConnected)
                 throw new InvalidOperationException("Not connected to SMB server");
 
             try
             {
-                byte[] data = ReadFile(sourcePath);
-                return WriteFile(destinationPath, data);
+                object readHandle;
+                FileStatus fileStatus;
+                NTStatus status = _fileStore.CreateFile(out readHandle, out fileStatus, sourcePath,
+                    AccessMask.GENERIC_READ | AccessMask.SYNCHRONIZE, SMBLibrary.FileAttributes.Normal,
+                    ShareAccess.Read, CreateDisposition.FILE_OPEN, CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_ALERT, null);
+
+                if (status != NTStatus.STATUS_SUCCESS)
+                    return false;
+
+                object writeHandle = null;
+                try
+                {
+                    status = _fileStore.CreateFile(out writeHandle, out fileStatus, destinationPath,
+                        AccessMask.GENERIC_WRITE | AccessMask.SYNCHRONIZE, SMBLibrary.FileAttributes.Normal,
+                        ShareAccess.None, CreateDisposition.FILE_OVERWRITE_IF, CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_ALERT, null);
+
+                    if (status != NTStatus.STATUS_SUCCESS)
+                        return false;
+
+                    long bytesCopied = 0;
+                    while (true)
+                    {
+                        byte[] data;
+                        status = _fileStore.ReadFile(out data, readHandle, bytesCopied, (int)_client.MaxReadSize);
+
+                        if (status != NTStatus.STATUS_SUCCESS && status != NTStatus.STATUS_END_OF_FILE)
+                            return false;
+
+                        if (data != null && data.Length > 0)
+                        {
+                            int numberOfBytesWritten;
+                            NTStatus writeStatus = _fileStore.WriteFile(out numberOfBytesWritten, writeHandle, bytesCopied, data);
+                            if (writeStatus != NTStatus.STATUS_SUCCESS)
+                                return false;
+
+                            bytesCopied += numberOfBytesWritten;
+                            progress?.Report(bytesCopied);
+                        }
+
+                        if (status == NTStatus.STATUS_END_OF_FILE || data.Length == 0)
+                            break;
+                    }
+                    
+                    return true;
+                }
+                finally
+                {
+                    if (writeHandle != null)
+                        _fileStore.CloseFile(writeHandle);
+                    _fileStore.CloseFile(readHandle);
+                }
             }
             catch
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Copies a file asynchronously.
+        /// </summary>
+        public async Task<bool> CopyFileAsync(string sourcePath, string destinationPath, IProgress<long> progress = null)
+        {
+            return await Task.Run(() => CopyFile(sourcePath, destinationPath, progress));
         }
 
         /// <summary>
