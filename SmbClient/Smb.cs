@@ -1611,6 +1611,98 @@ namespace SmbClient
             return await Task.Run(() => SearchFiles(path, searchPattern, recursive));
         }
 
+        /// <summary>
+        /// Đọc một file nội bộ 1 lần rồi upload (sao chép) đến nhiều máy chủ SMB cùng lúc.
+        /// Thích hợp để tối ưu IO khi cần phân phối 1 file đến nhiều đích.
+        /// </summary>
+        public static void UploadFileToMultipleServers(string localPath, List<SmbUploadTarget> targets, IProgress<long> progress = null)
+        {
+            if (targets == null || targets.Count == 0)
+                return;
+
+            if (!File.Exists(localPath))
+                throw new FileNotFoundException($"Local file '{localPath}' not found.");
+
+            var fileInfo = new System.IO.FileInfo(localPath);
+            long totalBytes = fileInfo.Length;
+
+            var activeTargets = new List<SmbActiveTarget>();
+
+            try
+            {
+                // Mở handle trên tất cả các server đích
+                foreach (var target in targets)
+                {
+                    if (target.Client == null || !target.Client._isConnected)
+                    {
+                        throw new InvalidOperationException($"Not connected to SMB server for remote path: {target.RemotePath}");
+                    }
+
+                    object handle;
+                    FileStatus fileStatus;
+                    NTStatus status = target.Client._fileStore.CreateFile(out handle, out fileStatus, target.RemotePath,
+                        AccessMask.GENERIC_WRITE | AccessMask.SYNCHRONIZE, SMBLibrary.FileAttributes.Normal,
+                        ShareAccess.None, CreateDisposition.FILE_OVERWRITE_IF, CreateOptions.FILE_NON_DIRECTORY_FILE | CreateOptions.FILE_SYNCHRONOUS_IO_ALERT, null);
+
+                    if (status == NTStatus.STATUS_SUCCESS)
+                    {
+                        activeTargets.Add(new SmbActiveTarget { Client = target.Client, Handle = handle });
+                    }
+                    else
+                    {
+                        throw new IOException($"Failed to create or overwrite remote file '{target.RemotePath}' on server '{target.Client.ServerName}': {status}");
+                    }
+                }
+
+                if (activeTargets.Count == 0) return;
+
+                // Tìm kích thước ghi an toàn theo min của tất cả client
+                int writeSize = activeTargets.Min(t => (int)t.Client._client.MaxWriteSize);
+                long bytesWritten = 0;
+
+                using (var localStream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    byte[] buffer = new byte[writeSize];
+                    int bytesRead;
+
+                    while ((bytesRead = localStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        byte[] chunk = bytesRead == buffer.Length ? buffer : buffer.Take(bytesRead).ToArray();
+
+                        foreach (var target in activeTargets)
+                        {
+                            int numberOfBytesWritten;
+                            NTStatus status = target.Client._fileStore.WriteFile(out numberOfBytesWritten, target.Handle, bytesWritten, chunk);
+                            
+                            if (status != NTStatus.STATUS_SUCCESS)
+                            {
+                                throw new IOException($"Failed to write to remote file on server '{target.Client.ServerName}': {status}");
+                            }
+                        }
+
+                        bytesWritten += bytesRead;
+                        progress?.Report(bytesWritten);
+                    }
+                }
+            }
+            finally
+            {
+                // Đóng tất cả handle
+                foreach (var target in activeTargets)
+                {
+                    try { target.Client._fileStore.CloseFile(target.Handle); } catch { /* Bỏ qua ngoại lệ lúc cleanup */ }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Đọc một file nội bộ 1 lần rồi upload đến nhiều máy chủ SMB cùng lúc (bất đồng bộ).
+        /// </summary>
+        public static async Task UploadFileToMultipleServersAsync(string localPath, List<SmbUploadTarget> targets, IProgress<long> progress = null)
+        {
+            await Task.Run(() => UploadFileToMultipleServers(localPath, targets, progress));
+        }
+
         // Disconnect from server
         public void Disconnect()
         {
@@ -1634,6 +1726,18 @@ namespace SmbClient
         {
             Disconnect();
         }
+    }
+
+    public class SmbUploadTarget
+    {
+        public Smb Client { get; set; }
+        public string RemotePath { get; set; }
+    }
+
+    internal class SmbActiveTarget
+    {
+        public Smb Client { get; set; }
+        public object Handle { get; set; }
     }
 
     // Class containing file/folder information
